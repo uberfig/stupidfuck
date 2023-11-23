@@ -2,10 +2,22 @@
 struct State {
     data: usize,
     ir: usize,
-    memory: [u8; 512],
-    inst: [u8; 512],
+    memory: [u8; 1024],
+    inst: [u8; 1024],
     last: usize,
 }
+impl State {
+    fn new() -> Self {
+        State {
+            data: 0,
+            ir: 0,
+            memory: [0; 1024],
+            inst: [0; 1024],
+            last: 0,
+        }
+    }
+}
+
 fn inc_data(state: &mut State) {
     state.data += 1;
 }
@@ -71,13 +83,7 @@ fn match_rev(state: &mut State) {
 
 fn main() {
     let hello = include_str!("../hello.bf").as_bytes();
-    let mut program = State {
-        data: 0,
-        ir: 0,
-        memory: [0; 512],
-        inst: [0; 512],
-        last: 0,
-    };
+    let mut program = State::new();
     let mut curr: usize = 0;
     for i in hello {
         match i {
