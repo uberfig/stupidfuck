@@ -66,9 +66,6 @@ fn match_rev(state: &mut State) {
             }
             _ => {}
         }
-        // I Copied the wrong line of code and
-        // didn't realize i t
-        //local_level -= 1;
     }
 }
 
@@ -100,12 +97,7 @@ fn main() {
     }
     program.last = curr;
 
-    // let mut level = 0;
-
     while program.ir < program.last {
-        // let i = program.inst[program.ir];
-        // let bruh = i as char;
-        // let data = program.memory[program.data];
 
         match program.inst[program.ir] {
             b'>' => inc_data(&mut program),
