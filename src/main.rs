@@ -1,6 +1,8 @@
 // use std::vec;
 // use regex::Regex;
 
+use std::usize;
+
 /// Encapsulates everything required to run a brainfuck program, including its:
 /// - RAM
 /// - Pointer to memory
@@ -25,39 +27,41 @@ impl State {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Token {
-    Right,
-    Left,
+    Right(usize),
+    Left(usize),
     Incriment(u8),
     Decriment(u8),
-    Open,
-    Close,
+    Open(usize),
+    Close(usize),
     Input,
     Output,
 }
 
 /// Move data pointer to the right i.e. '>'
-fn inc_data(state: &mut State) {
-    state.memptr += 1;
-    if state.memptr == state.memory.len() {
-        state.memory.push(0);
+fn inc_data(state: &mut State, amount: usize) {
+    state.memptr += amount;
+    if state.memptr >= state.memory.len() {
+        for _i in 0..=state.memptr-state.memory.len() {
+            state.memory.push(0);
+        }
     }
 }
 
 /// Move data pointer to the left i.e. '<'
-fn dec_data(state: &mut State) {
-    state.memptr -= 1;
+fn dec_data(state: &mut State, amount: usize) {
+    state.memptr -= amount;
 }
 
 /// Increment value at memory address referenced by the data pointer i.e. '+'
-fn incbyte(state: &mut State) {
-    state.memory[state.memptr] = state.memory[state.memptr].wrapping_add(1);
+fn incbyte(state: &mut State, amount: u8) {
+    state.memory[state.memptr] = state.memory[state.memptr].wrapping_add(amount);
 }
 
 /// Decrement value at memory address referenced by the data pointer i.e. '-'
-fn decbyte(state: &mut State) {
-    state.memory[state.memptr] = state.memory[state.memptr].wrapping_sub(1);
+fn decbyte(state: &mut State, amount: u8) {
+    state.memory[state.memptr] = state.memory[state.memptr].wrapping_sub(amount);
 }
 
 /// Print out the value at the memory address referenced by the data pointer as an ASCII character to stdout i.e. '.'
@@ -77,62 +81,96 @@ fn inbyte(state: &mut State) {
 
 /// Execute the code inside the following set of square brackets (in code) if the value at the memory address referenced by the data pointer is 0 i.e. '['
 /// And keep doing it over and over again until value at the pointed-to memory address is 0.
-fn match_forward(state: &mut State) {
-    let mut local_level = 1;
+// fn match_forward(state: &mut State) {
+//     let mut local_level = 1;
 
+//     while local_level != 0 {
+//         state.instptr += 1;
+//         match state.inst[state.instptr] {
+//             Token::Open(_) => {
+//                 local_level += 1;
+//             }
+//             Token::Close(_) => {
+//                 local_level -= 1;
+//             }
+//             _ => {}
+//         }
+//     }
+// }
+fn forward_ofset(state: &mut State, pos: usize) -> usize {
+    let mut local_level = 1;
+    let mut pos: usize = pos;
     while local_level != 0 {
-        state.instptr += 1;
-        match state.inst[state.instptr] {
-            Token::Open => {
+        pos += 1;
+        match state.inst[pos] {
+            Token::Open(_) => {
                 local_level += 1;
             }
-            Token::Close => {
+            Token::Close(_) => {
                 local_level -= 1;
             }
             _ => {}
         }
     }
+    pos
+}
+fn jump_forward(state: &mut State, pos: usize) {
+    state.instptr = pos;
 }
 
 /// Signify the end of a repeated code section i.e. ']'
-fn match_rev(state: &mut State) {
-    let mut local_level = 1;
+// fn match_rev(state: &mut State) {
+//     let mut local_level = 1;
 
+//     while local_level != 0 {
+//         state.instptr -= 1;
+//         match state.inst[state.instptr] {
+//             Token::Open(_) => {
+//                 local_level -= 1;
+//             }
+//             Token::Close(_) => {
+//                 local_level += 1;
+//             }
+//             _ => {}
+//         }
+//     }
+// }
+fn rev_ofset(state: &mut State, pos: usize) -> usize {
+    let mut pos = pos;
+    let mut local_level = 1;
     while local_level != 0 {
-        state.instptr -= 1;
-        match state.inst[state.instptr] {
-            Token::Open => {
+        pos -= 1;
+        match state.inst[pos] {
+            Token::Open(_) => {
                 local_level -= 1;
             }
-            Token::Close => {
+            Token::Close(_) => {
                 local_level += 1;
             }
             _ => {}
         }
     }
+    pos
+}
+fn jump_rev(state: &mut State, pos: usize) {
+    state.instptr = pos;
 }
 
 fn main() {
     let hello = include_str!("../hello.bf").as_bytes();
     let mut program = State::new();
     let mut curr: usize = 0;
-    // let re = Regex::new(r"[<>\[\]+\-,.]").unwrap();
 
     for i in hello {
-        // if i.is_ascii() && re.is_match(&(*i as char).to_string()) {
-        //     program.inst.push(*i);
-        //     curr += 1;
-        // }
-
         match *i {
-            b'>' => program.inst.push(Token::Right),
-            b'<' => program.inst.push(Token::Left),
+            b'>' => program.inst.push(Token::Right(1)),
+            b'<' => program.inst.push(Token::Left(1)),
             b'+' => program.inst.push(Token::Incriment(1)),
             b'-' => program.inst.push(Token::Decriment(1)),
             b'.' => program.inst.push(Token::Output),
             b',' => program.inst.push(Token::Input),
-            b'[' => program.inst.push(Token::Open),
-            b']' => program.inst.push(Token::Close),
+            b'[' => program.inst.push(Token::Open(1)),
+            b']' => program.inst.push(Token::Close(1)),
             _ => {continue;}
         }
         curr += 1;
@@ -140,24 +178,105 @@ fn main() {
     program.last = curr;
     program.memory.push(0);
 
-    // dbg!(&program.inst);
+    let mut new_inst: Vec<Token> = Vec::with_capacity(4096);
+    
+    for i in 0..program.last {
+        match program.inst[i] {
+            Token::Right(_) => {
+                if new_inst.len() != 0 {
+                    let val = new_inst[new_inst.len()-1];
+                    match val {
+                        Token::Right(b) => {
+                            let pos = new_inst.len()-1;
+                            new_inst[pos] = Token::Right(b+1);
+                        },
+                        _ => new_inst.push(Token::Right(1)),
+                    }
+                } else {
+                    new_inst.push(Token::Right(1));
+                }
+            },
+            Token::Left(_) => {
+                if new_inst.len() != 0 {
+                    let val = new_inst[new_inst.len()-1];
+                    match val {
+                        Token::Left(b) => {
+                            let pos = new_inst.len()-1;
+                            new_inst[pos] = Token::Left(b+1);
+                        },
+                        _ => new_inst.push(Token::Left(1)),
+                    }
+                } else {
+                    new_inst.push(Token::Left(1));
+                }
+            },
+            Token::Incriment(_) => {
+                if new_inst.len() != 0 {
+                    let val = new_inst[new_inst.len()-1];
+                    match val {
+                        Token::Incriment(b) => {
+                            let pos = new_inst.len()-1;
+                            new_inst[pos] = Token::Incriment(b.wrapping_add(1));
+                        },
+                        _ => new_inst.push(Token::Incriment(1)),
+                    }
+                } else {
+                    new_inst.push(Token::Incriment(1));
+                }
+            },
+            Token::Decriment(_) => {
+                if new_inst.len() != 0 {
+                    let val = new_inst[new_inst.len()-1];
+                    match val {
+                        Token::Decriment(b) => {
+                            let pos = new_inst.len()-1;
+                            new_inst[pos] = Token::Decriment(b.wrapping_add(1));
+                        },
+                        _ => new_inst.push(Token::Decriment(1)),
+                    }
+                } else {
+                    new_inst.push(Token::Decriment(1));
+                }
+            },
+            _ => new_inst.push(program.inst[i]),
+        }
+    }
 
-    while program.instptr < program.last {
+    program.inst = new_inst;
+
+    for i in 0..program.inst.len() {
+        match program.inst[i] {
+            Token::Open(_) => {
+                let pos = forward_ofset(&mut program, i);
+                program.inst[i] = Token::Open(pos);
+            },
+            Token::Close(_) => {
+                let pos = rev_ofset(&mut program, i);
+                program.inst[i] = Token::Close(pos);
+            },
+            _ => {},
+        }
+    }
+
+    
+    dbg!(&program.inst);
+
+    while program.instptr < program.inst.len() {
         match program.inst[program.instptr] {
-            Token::Right => inc_data(&mut program),
-            Token::Left => dec_data(&mut program),
-            Token::Incriment(_) => incbyte(&mut program),
-            Token::Decriment(_) => decbyte(&mut program),
+            Token::Right(a) => inc_data(&mut program, a),
+            Token::Left(a) => dec_data(&mut program, a),
+            Token::Incriment(a) => incbyte(&mut program, a),
+            Token::Decriment(a) => decbyte(&mut program, a),
             Token::Output => outbyte(&mut program),
             Token::Input => inbyte(&mut program),
-            Token::Open => {
+            Token::Open(a) => {
                 if program.memory[program.memptr] == 0 {
-                    match_forward(&mut program);
+                    jump_forward(&mut program, a);
                 }
             }
-            Token::Close => {
+            Token::Close(a) => {
                 if program.memory[program.memptr] != 0 {
-                    match_rev(&mut program);
+                    jump_rev(&mut program, a);
                     continue;
                 }
             }
