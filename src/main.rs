@@ -79,24 +79,7 @@ fn inbyte(state: &mut State) {
     state.memory[state.memptr] = val;
 }
 
-/// Execute the code inside the following set of square brackets (in code) if the value at the memory address referenced by the data pointer is 0 i.e. '['
-/// And keep doing it over and over again until value at the pointed-to memory address is 0.
-// fn match_forward(state: &mut State) {
-//     let mut local_level = 1;
-
-//     while local_level != 0 {
-//         state.instptr += 1;
-//         match state.inst[state.instptr] {
-//             Token::Open(_) => {
-//                 local_level += 1;
-//             }
-//             Token::Close(_) => {
-//                 local_level -= 1;
-//             }
-//             _ => {}
-//         }
-//     }
-// }
+/// Find the position of the closing ]
 fn forward_ofset(state: &mut State, pos: usize) -> usize {
     let mut local_level = 1;
     let mut pos: usize = pos;
@@ -114,27 +97,14 @@ fn forward_ofset(state: &mut State, pos: usize) -> usize {
     }
     pos
 }
+
+/// Execute the code inside the following set of square brackets (in code) if the value at the memory address referenced by the data pointer is 0 i.e. '['
+/// And keep doing it over and over again until value at the pointed-to memory address is 0.
 fn jump_forward(state: &mut State, pos: usize) {
     state.instptr = pos;
 }
 
-/// Signify the end of a repeated code section i.e. ']'
-// fn match_rev(state: &mut State) {
-//     let mut local_level = 1;
-
-//     while local_level != 0 {
-//         state.instptr -= 1;
-//         match state.inst[state.instptr] {
-//             Token::Open(_) => {
-//                 local_level -= 1;
-//             }
-//             Token::Close(_) => {
-//                 local_level += 1;
-//             }
-//             _ => {}
-//         }
-//     }
-// }
+///calculate the matching [ to a ]
 fn rev_ofset(state: &mut State, pos: usize) -> usize {
     let mut pos = pos;
     let mut local_level = 1;
@@ -152,6 +122,8 @@ fn rev_ofset(state: &mut State, pos: usize) -> usize {
     }
     pos
 }
+
+/// Signify the end of a repeated code section i.e. ']'
 fn jump_rev(state: &mut State, pos: usize) {
     state.instptr = pos;
 }
@@ -257,9 +229,6 @@ fn main() {
             _ => {},
         }
     }
-
-    
-    dbg!(&program.inst);
 
     while program.instptr < program.inst.len() {
         match program.inst[program.instptr] {
