@@ -1,5 +1,5 @@
-use std::vec;
-use regex::Regex;
+// use std::vec;
+// use regex::Regex;
 
 /// Encapsulates everything required to run a brainfuck program, including its:
 /// - RAM
@@ -15,7 +15,7 @@ struct State {
     /// All of RAM
     memory: Vec<u8>,
     /// All code (instruction data)
-    inst: Vec<u8>,
+    inst: Vec<Token>,
     /// Pointer to the last character in the code
     last: usize,
 }
@@ -23,6 +23,18 @@ impl State {
     fn new() -> Self {
         State { memptr: 0, instptr: 0, memory: Vec::with_capacity(4096), inst: Vec::with_capacity(4096), last: 0 }
     }
+}
+
+#[derive(Debug)]
+enum Token {
+    Right,
+    Left,
+    Incriment(u8),
+    Decriment(u8),
+    Open,
+    Close,
+    Input,
+    Output,
 }
 
 /// Move data pointer to the right i.e. '>'
@@ -71,10 +83,10 @@ fn match_forward(state: &mut State) {
     while local_level != 0 {
         state.instptr += 1;
         match state.inst[state.instptr] {
-            b'[' => {
+            Token::Open => {
                 local_level += 1;
             }
-            b']' => {
+            Token::Close => {
                 local_level -= 1;
             }
             _ => {}
@@ -89,10 +101,10 @@ fn match_rev(state: &mut State) {
     while local_level != 0 {
         state.instptr -= 1;
         match state.inst[state.instptr] {
-            b'[' => {
+            Token::Open => {
                 local_level -= 1;
             }
-            b']' => {
+            Token::Close => {
                 local_level += 1;
             }
             _ => {}
@@ -104,37 +116,51 @@ fn main() {
     let hello = include_str!("../hello.bf").as_bytes();
     let mut program = State::new();
     let mut curr: usize = 0;
-    let re = Regex::new(r"[<>\[\]+\-,.]").unwrap();
+    // let re = Regex::new(r"[<>\[\]+\-,.]").unwrap();
 
     for i in hello {
-        if i.is_ascii() && re.is_match(&(*i as char).to_string()) {
-            program.inst.push(*i);
-            curr += 1;
+        // if i.is_ascii() && re.is_match(&(*i as char).to_string()) {
+        //     program.inst.push(*i);
+        //     curr += 1;
+        // }
+
+        match *i {
+            b'>' => program.inst.push(Token::Right),
+            b'<' => program.inst.push(Token::Left),
+            b'+' => program.inst.push(Token::Incriment(1)),
+            b'-' => program.inst.push(Token::Decriment(1)),
+            b'.' => program.inst.push(Token::Output),
+            b',' => program.inst.push(Token::Input),
+            b'[' => program.inst.push(Token::Open),
+            b']' => program.inst.push(Token::Close),
+            _ => {continue;}
         }
+        curr += 1;
     }
     program.last = curr;
     program.memory.push(0);
 
+    // dbg!(&program.inst);
+
     while program.instptr < program.last {
         match program.inst[program.instptr] {
-            b'>' => inc_data(&mut program),
-            b'<' => dec_data(&mut program),
-            b'+' => incbyte(&mut program),
-            b'-' => decbyte(&mut program),
-            b'.' => outbyte(&mut program),
-            b',' => inbyte(&mut program),
-            b'[' => {
+            Token::Right => inc_data(&mut program),
+            Token::Left => dec_data(&mut program),
+            Token::Incriment(_) => incbyte(&mut program),
+            Token::Decriment(_) => decbyte(&mut program),
+            Token::Output => outbyte(&mut program),
+            Token::Input => inbyte(&mut program),
+            Token::Open => {
                 if program.memory[program.memptr] == 0 {
                     match_forward(&mut program);
                 }
             }
-            b']' => {
+            Token::Close => {
                 if program.memory[program.memptr] != 0 {
                     match_rev(&mut program);
                     continue;
                 }
             }
-            _ => {}
         }
         program.instptr += 1;
     }
