@@ -9,11 +9,11 @@ use regex::Regex;
 #[derive(Debug)]
 struct State {
     /// Pointer to memory/RAM (data pointer)
-    data: usize,
+    memptr: usize,
     /// Pointer to code (program counter)
-    ir: usize,
+    instptr: usize,
     /// All of RAM
-    memory: [u8; 4096],
+    memory: Vec<u8>,
     /// All code (instruction data)
     inst: Vec<u8>,
     /// Pointer to the last character in the code
@@ -21,33 +21,36 @@ struct State {
 }
 impl State {
     fn new() -> Self {
-        State { data: 0, ir: 0, memory: [0; 4096], inst: Vec::with_capacity(4096), last: 0 }
+        State { memptr: 0, instptr: 0, memory: Vec::with_capacity(4096), inst: Vec::with_capacity(4096), last: 0 }
     }
 }
 
 /// Move data pointer to the right i.e. '>'
 fn inc_data(state: &mut State) {
-    state.data += 1;
+    state.memptr += 1;
+    if state.memptr == state.memory.len() {
+        state.memory.push(0);
+    }
 }
 
 /// Move data pointer to the left i.e. '<'
 fn dec_data(state: &mut State) {
-    state.data -= 1;
+    state.memptr -= 1;
 }
 
 /// Increment value at memory address referenced by the data pointer i.e. '+'
 fn incbyte(state: &mut State) {
-    state.memory[state.data] = state.memory[state.data].wrapping_add(1);
+    state.memory[state.memptr] = state.memory[state.memptr].wrapping_add(1);
 }
 
 /// Decrement value at memory address referenced by the data pointer i.e. '-'
 fn decbyte(state: &mut State) {
-    state.memory[state.data] = state.memory[state.data].wrapping_sub(1);
+    state.memory[state.memptr] = state.memory[state.memptr].wrapping_sub(1);
 }
 
 /// Print out the value at the memory address referenced by the data pointer as an ASCII character to stdout i.e. '.'
 fn outbyte(state: &mut State) {
-    print!("{}", state.memory[state.data] as char);
+    print!("{}", state.memory[state.memptr] as char);
 }
 
 /// Prompt user for a single character via stdin, and once they do that, write that character's ASCII value to the memory address referenced by the data pointer i.e. ','
@@ -57,7 +60,7 @@ fn inbyte(state: &mut State) {
         .and_then(|result| result.ok())
         .unwrap_or(0);
 
-    state.memory[state.data] = val;
+    state.memory[state.memptr] = val;
 }
 
 /// Execute the code inside the following set of square brackets (in code) if the value at the memory address referenced by the data pointer is 0 i.e. '['
@@ -66,8 +69,8 @@ fn match_forward(state: &mut State) {
     let mut local_level = 1;
 
     while local_level != 0 {
-        state.ir += 1;
-        match state.inst[state.ir] {
+        state.instptr += 1;
+        match state.inst[state.instptr] {
             b'[' => {
                 local_level += 1;
             }
@@ -84,8 +87,8 @@ fn match_rev(state: &mut State) {
     let mut local_level = 1;
 
     while local_level != 0 {
-        state.ir -= 1;
-        match state.inst[state.ir] {
+        state.instptr -= 1;
+        match state.inst[state.instptr] {
             b'[' => {
                 local_level -= 1;
             }
@@ -112,8 +115,8 @@ fn main() {
     program.last = curr;
 
     println!("{}",program.last);
-    while program.ir < program.last {
-        match program.inst[program.ir] {
+    while program.instptr < program.last {
+        match program.inst[program.instptr] {
             b'>' => inc_data(&mut program),
             b'<' => dec_data(&mut program),
             b'+' => incbyte(&mut program),
@@ -121,19 +124,19 @@ fn main() {
             b'.' => outbyte(&mut program),
             b',' => inbyte(&mut program),
             b'[' => {
-                if program.memory[program.data] == 0 {
+                if program.memory[program.memptr] == 0 {
                     match_forward(&mut program);
                 }
             }
             b']' => {
-                if program.memory[program.data] != 0 {
+                if program.memory[program.memptr] != 0 {
                     match_rev(&mut program);
                     continue;
                 }
             }
             _ => {}
         }
-        program.ir += 1;
+        program.instptr += 1;
     }
     println!();
 }
