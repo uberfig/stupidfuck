@@ -1,3 +1,4 @@
+use std::vec;
 use regex::Regex;
 
 /// Encapsulates everything required to run a brainfuck program, including its:
@@ -14,13 +15,13 @@ struct State {
     /// All of RAM
     memory: [u8; 4096],
     /// All code (instruction data)
-    inst: [u8; 4096],
+    inst: Vec<u8>,
     /// Pointer to the last character in the code
     last: usize,
 }
 impl State {
     fn new() -> Self {
-        State { data: 0, ir: 0, memory: [0; 4096], inst: [0; 4096], last: 0 }
+        State { data: 0, ir: 0, memory: [0; 4096], inst: Vec::with_capacity(4096), last: 0 }
     }
 }
 
@@ -104,14 +105,14 @@ fn main() {
 
     for i in hello {
         if i.is_ascii() && re.is_match(&(*i as char).to_string()) {
-            program.inst[curr] = *i;
+            program.inst.push(*i);
+            curr += 1;
         }
-        curr += 1;
     }
     program.last = curr;
 
+    println!("{}",program.last);
     while program.ir < program.last {
-
         match program.inst[program.ir] {
             b'>' => inc_data(&mut program),
             b'<' => dec_data(&mut program),
