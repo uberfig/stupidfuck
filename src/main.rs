@@ -113,8 +113,8 @@ fn main() {
         }
     }
     program.last = curr;
+    program.memory.push(0);
 
-    println!("{}",program.last);
     while program.instptr < program.last {
         match program.inst[program.instptr] {
             b'>' => inc_data(&mut program),
