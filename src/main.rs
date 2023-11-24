@@ -1,8 +1,3 @@
-// use std::vec;
-// use regex::Regex;
-
-use std::usize;
-
 /// Encapsulates everything required to run a brainfuck program, including its:
 /// - RAM
 /// - Pointer to memory
